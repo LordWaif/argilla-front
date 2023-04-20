@@ -1,0 +1,42 @@
+.status {
+  display: inline-block;
+  padding: 0 8px;
+  height: 24px;
+  line-height: 24px;
+  border-radius: 12px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.active-learning {
+  color: rgb(88, 87, 17);
+}
+
+.checkpoint {
+  color: rgb(11, 88, 11);
+}
+
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-left: 8px;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-top-color: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.check-icon {
+  margin-left: 10px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+}
+
+  
