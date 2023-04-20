@@ -27,6 +27,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = [
     'procyon.tce.pi.gov.br',
+    '127.0.0.1'
 ]
 
 # Application definition

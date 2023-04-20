@@ -2,8 +2,13 @@
 <html>
     <head>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js" integrity="sha384-IQsoLXl5PILFhosVNubq5LC7Qb9DXgDA9i+tQ8Zj3iwWAwPtgFTxbJ8NT4GN1R8p" crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js" integrity="sha384-cVKIPhGWiC2Al4u+LWgxfKTRIcfu0JTxR+EQDz/bgldoEyl4H0zUF0QKbrJ0EcQF" crossorigin="anonymous"></script>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
-    </head>
+        <script src="https://kit.fontawesome.com/4169326a4c.js" crossorigin="anonymous"></script>
+      </head>
     <body>
         <div style="display: flex; flex-direction: column; height: 100vh;">
             <nav class="navbar navbar-expand-lg bg-body-tertiary">
@@ -26,13 +31,79 @@
                         </ul>
                       </li>
                       <li class="nav-item">
-                        <button type="button" class="btn btn-primary btn-lg">Checkpoint</button>
+                        <button type="button" class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#exampleModal">Checkpoint</button>
                       </li>
                     </ul>
                   </div>
                 </div>
             </nav>
             <iframe src="http://procyon.tce.pi.gov.br:6900/datasets/admin/lima" style="flex: 1;width: 100%; height: 100%; border: none;"></iframe>
+        </div>
+        <!-- Modal -->
+        <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl">
+            <div class="modal-content">
+              <div class="modal-header bg-dark">
+                <h5 class="modal-title text-white" id="exampleModalLabel">Rotulagem de dados assistida por IA</h5>
+                <button type="button" class="btn-close btn-light bg-white" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <div class="descricao-modal p-4">
+                  <span style="font-size: 14px;">Este é um instantâneo do desempenho do AI Assistant. Use-o para determinar quando o assistente deve rotular automaticamente os dados restantes.</span><br>
+                  <span class="font-weight-bold" style="font-size: 14px;">Uma taxa de concordância consistentemente alta e uma alta pontuação de certeza são essenciais para a precisão da rotulagem. Escolha rotular automaticamente com base em seu melhor julgamento.</span>
+                </div>
+                <div class="container">
+                  <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4 justify-content-md-center pb-4 w-100">
+                    <div class="col-md-7">
+                      <div class="card h-100 w-100 justify-content-md-center" style="background-color: #F4F4F4">
+                        <div class="card-body h-100 w-100" id="div_grafico">
+                          <h6 class="card-title font-weight-bold">Tendência de Acordo</h6>
+                          {{ plot_div|safe }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4 justify-content-md-center pb-3">
+                    <div class="col">
+                      <div class="card h-100" style="background-color: #F4F4F4">
+                        <div class="card-body">
+                          <h1 class="card-title">100%</h1>
+                          <p class="card-text font-weight-bold" style="font-size: 15px;">Acordo atual entre você e o assistente</p>
+                          <p class="card-text">Baseado em 10/10 Exemplos</p>
+                          <p class="card-text" style="font-size: 12px;">Acordo é a porcentagem do tempo que você concordou com o IA em cada interação na fase de refinamento.</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col">
+                      <div class="card h-100" style="background-color: #F4F4F4">
+                        <div class="card-body">
+                          <h1 class="card-title">444</h1>
+                          <p class="card-text font-weight-bold" style="font-size: 15px;">Número de exemplos não rotulados restantes</p>
+                          <p class="card-text">Representa 74% de todos os dados</p>
+                          <p class="card-text" style="font-size: 12px;">Quantos exemplos ainda não foram rotulados.</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col">
+                      <div class="card h-100" style="background-color: #F4F4F4"> 
+                        <div class="card-body">
+                          <h1 class="card-title">97%</h1>
+                          <p class="card-text font-weight-bold" style="font-size: 15px;">Certeza de previsões sobre exemplos não rotulados restantes</p>
+                          <!--<p class="card-text">Represents 74% of all data</p>-->
+                          <p class="card-text" style="font-size: 12px;">A certeza descreve o quão confiante o Assistente está em suas previsões nos exemplos restantes não rotulados. Observe que a certeza não é diretamente igual a ...</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-dark" data-bs-dismiss="modal">Auto rotulagem <i class="fa-solid fa-arrows-rotate ps-1"></i></button>
+                <span class="ps-3 pe-3 font-weight-bold">OU</span>
+                <button type="button" class="btn btn-primary">Continuar refinamento <i class="fa-solid fa-arrow-right-long ps-1"></i></button>
+              </div>
+            </div>
+          </div>
         </div>
     </body>
 </html>
