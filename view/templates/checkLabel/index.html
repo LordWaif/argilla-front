@@ -16,7 +16,7 @@
     <body>
         <div style="display: flex; flex-direction: column; height: 100vh;">
           <nav class="navbar navbar-expand-lg navbar-light bg-light">
-            <button id="check_btn" type="button" class="btn btn-primary btn-lg" disabled data-bs-toggle="modal" data-bs-target="#exampleModal"><i class="fas fa-check fa-lg d-inline-block align-middle mr-2"></i>Checkpoint</button>
+            <button id="check_btn" type="button" class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#exampleModal"><i class="fas fa-check fa-lg d-inline-block align-middle mr-2"></i>Checkpoint</button>
             <span class="status" id="status-text"></span>
             <div id="spinner"></div>
             <div class="collapse navbar-collapse" id="navbarNav">
@@ -51,23 +51,15 @@
                   <span class="font-weight-bold" style="font-size: 14px;">Uma taxa de concordância consistentemente alta e uma alta pontuação de certeza são essenciais para a precisão da rotulagem. Escolha rotular automaticamente com base em seu melhor julgamento.</span>
                 </div>
                 <div class="container">
-                  <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4 justify-content-md-center pb-4 w-100">
-                    <div class="col-md-7">
-                      <div class="card h-100 w-100 justify-content-md-center" style="background-color: #F4F4F4">
-                        <div class="card-body h-100 w-100" id="div_grafico">
-                          <h6 class="card-title font-weight-bold">Tendência de Acordo</h6>
-                          {{ plot_div|safe }}
-                        </div>
-                      </div>
-                    </div>
+                  <div id="graficos_render" class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4 justify-content-md-center pb-4 w-100">
                   </div>
                   <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4 justify-content-md-center pb-3">
                     <div class="col">
                       <div class="card h-100" style="background-color: #F4F4F4">
                         <div class="card-body">
-                          <h1 class="card-title">100%</h1>
+                          <h1 id="concordancia_percent" class="card-title">0%</h1>
                           <p class="card-text font-weight-bold" style="font-size: 15px;">Acordo atual entre você e o assistente</p>
-                          <p class="card-text">Baseado em 10/10 Exemplos</p>
+                          <p id="concordancia_value" class="card-text">Baseado em 10/10 Exemplos</p>
                           <p class="card-text" style="font-size: 12px;">Acordo é a porcentagem do tempo que você concordou com o IA em cada interação na fase de refinamento.</p>
                         </div>
                       </div>
@@ -75,9 +67,9 @@
                     <div class="col">
                       <div class="card h-100" style="background-color: #F4F4F4">
                         <div class="card-body">
-                          <h1 class="card-title">444</h1>
+                          <h1 id="restantes" class="card-title">0</h1>
                           <p class="card-text font-weight-bold" style="font-size: 15px;">Número de exemplos não rotulados restantes</p>
-                          <p class="card-text">Representa 74% de todos os dados</p>
+                          <p id="restantes_percent" class="card-text">Representa 0% de todos os dados</p>
                           <p class="card-text" style="font-size: 12px;">Quantos exemplos ainda não foram rotulados.</p>
                         </div>
                       </div>
@@ -85,7 +77,7 @@
                     <div class="col">
                       <div class="card h-100" style="background-color: #F4F4F4"> 
                         <div class="card-body">
-                          <h1 class="card-title">97%</h1>
+                          <h1 id="trusting" class="card-title">0%</h1>
                           <p class="card-text font-weight-bold" style="font-size: 15px;">Certeza de previsões sobre exemplos não rotulados restantes</p>
                           <!--<p class="card-text">Represents 74% of all data</p>-->
                           <p class="card-text" style="font-size: 12px;">A certeza descreve o quão confiante o Assistente está em suas previsões nos exemplos restantes não rotulados. Observe que a certeza não é diretamente igual a ...</p>
@@ -96,9 +88,9 @@
                 </div>
               </div>
               <div class="modal-footer justify-content-center">
-                <button type="button" class="btn btn-dark" data-bs-dismiss="modal">Auto rotulagem <i class="fa-solid fa-arrows-rotate ps-1"></i></button>
+                <button id='auto_l' type="button" class="btn btn-dark" data-bs-dismiss="modal">Auto rotulagem <i class="fa-solid fa-arrows-rotate ps-1"></i></button>
                 <span class="ps-3 pe-3 font-weight-bold">OU</span>
-                <button type="button" class="btn btn-primary">Continuar refinamento <i class="fa-solid fa-arrow-right-long ps-1"></i></button>
+                <button id='refinar' type="button" class="btn btn-primary" data-bs-dismiss="modal">Continuar refinamento <i class="fa-solid fa-arrow-right-long ps-1"></i></button>
               </div>
             </div>
           </div>
@@ -109,30 +101,123 @@
 <script type="text/javascript">
   var query = {
     "metadata": {
-      "batch_id": [
-        "1"
-      ]
+      "batch_id": 1
     }
   }
-  const meuValor = "{{dt_complete.id}}";
+  $('#check_btn').click(function(){
+    $.ajax({
+      url: "http://procyon.tce.pi.gov.br:5001/datasets/{{dt_complete.id}}/metrics",
+      method: 'GET',
+      success: function(data){
+        $('#trusting').text((data[data.length-1].trusting*100).toFixed(2)+"%")
+        var inv_hamming_loss = 0
+        data.forEach(function(elemento) {
+          inv_hamming_loss += (1-elemento.hamming_loss)
+        });
+
+        $('#concordancia_percent').text((inv_hamming_loss/data.length*100).toFixed(2)+"%")
+
+        $.ajax({
+          url: "/gen-graph",
+          method:'POST',
+          headers: {'X-Requested-With': 'XMLHttpRequest'},
+          data: JSON.stringify(data),
+          contentType: "application/json",
+          dataType: "json",
+          success: function(data) {
+            const $graph = $(data.graph_inv_hamming_loss);
+            $('#graficos_render').append($graph);
+          },
+          complete: function() {
+            const $div3 = $('<div>',{
+              'class':"card-body h-100 w-100",
+              'id':"div_grafico",
+              'style':"width: fit-content !important;"
+            })
+            const $div2 = $('<div>',{
+              'class':"card h-100 w-100 justify-content-md-center",
+              'style':"background-color: #F4F4F4;width: fit-content !important;margin:auto;"
+            }).append(
+              $div3
+            )
+            const $div = $('<div>',{'class':"row-md-7",'style':"width: fit-content !important;"})
+            $('#graficos_render').children().wrap($div3).prepend('<h6 class="card-title font-weight-bold">Tendência de Acordo</h6>').wrap($div2).wrap($div);
+          }
+        })
+      }
+    })
+    $.ajax({
+      url: "http://procyon.tce.pi.gov.br:5001/datasets?id={{dt_complete.id}}",
+      method: 'GET',
+      success: function(data){
+        $('#restantes').text(data.total-data.rotulados)
+        $('#restantes_percent').text("Representa "+((data.total-data.rotulados)/data.total*100).toFixed(2)+"% de todos os dados")
+        $('#concordancia_value').text("Baseado em "+data.rotulados+"/"+data.total+" Exemplos")
+      }
+    })
+  })
+
+
+  $("#auto_l").click(function() {
+    checkpoint("{{dt_complete.id}}",true)
+  });
+  $("#refinar").click(function() {
+    checkpoint("{{dt_complete.id}}",false)
+  });
+  function checkpoint(id,isAuto) {
+    var actual_batch_id = -1
+    $.ajax({
+      url: "http://procyon.tce.pi.gov.br:5001/datasets/"+id+"/status",
+      method: 'GET',
+      success: function(data) {
+          actual_batch_id = data[data.length-1].batch_id
+          var dados = {
+            "batch_id" : actual_batch_id,
+            "auto_labeling" : isAuto
+          }
+          $.ajax({
+              url: "http://procyon.tce.pi.gov.br:5001/datasets/"+id+"/checkpoint",
+              method: 'POST',
+              data: JSON.stringify(dados),
+              contentType: "application/json",
+              dataType: "json",
+          })
+          $.ajax({
+            url: "http://procyon.tce.pi.gov.br:5001/datasets/"+id_dataset+"/status",
+            method: 'POST',
+            data: JSON.stringify({
+              "name" : "iniciado",
+              "batch_id" : actual_batch_id+1
+            }),
+            contentType: "application/json",
+            dataType: "json",
+          })
+          refreshBatch(actual_batch_id+1)
+      }
+    })
+  }
+  function refreshBatch(id) {
+    query['metadata']['batch_id'] = [id.toString()]
+    console.log(JSON.stringify(query))
+    var newURL = "{{choose}}?query="+btoa(JSON.stringify(query))
+    console.log(btoa(JSON.stringify(query)))
+    console.log(newURL)
+    $('#argilla').prop("src",newURL)
+  }
+  const id_dataset = "{{dt_complete.id}}";
   atualizarStatus()
   function atualizarStatus() {
     $.ajax({
-      url: "http://procyon.tce.pi.gov.br:5001/datasets/"+meuValor+"/status",  // URL da API que retorna o status
+      url: "http://procyon.tce.pi.gov.br:5001/datasets/"+id_dataset+"/status",  // URL da API que retorna o status
       method: 'GET',
       success: function(data) {
         if (data[data.length-1].name === 'active_learning') {
-          $('#check_btn').prop("disabled", true);
+          //$('#check_btn').prop("disabled", true);
           $('#status-text').text('Em Active learning');
           $('#spinner').addClass('spinner');
           $('#status-text').addClass('active-learning');
         } else if (data[data.length-1].name === 'checkpoint') {
-          query['metadata']['batch_id'] = data[data.length-1].batch_id
-          var newURL = "{{choose}}?query="+btoa(JSON.stringify(query))
-          if ($('#argilla').prop("src") !== newURL){
-            $('#argilla').prop("src",newURL)
-          }
-          $('#check_btn').prop("disabled", false);
+          //$('#check_btn').prop("disabled", false);
           $('#status-text').text('Pronto para Checkpoint');
 
           $('#spinner').removeClass('spinner');
@@ -141,7 +226,7 @@
           $('#status-text').addClass('checkpoint');
           $('#status-text').prepend('<i class="fas fa-check"></i> ');
         } else {
-          $('#check_btn').prop("disabled", true);
+          //$('#check_btn').prop("disabled", true);
           $('#status-text').text('Dados preparados');
           $('#spinner').removeClass('spinner');
           $('#status-text').removeClass('active-learning');
