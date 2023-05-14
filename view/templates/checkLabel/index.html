@@ -2,9 +2,10 @@
 <!DOCTYPE html>
 <html>
     <head>
+      <script src={%static "functions.js" %}></script>
       <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>      
-        <link href={%static "style.css" %} rel="stylesheet" referrerpolicy="origin"></script>
+        <link href={%static "style.css" %} rel="stylesheet" referrerpolicy="origin">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
@@ -16,7 +17,7 @@
     <body>
         <div style="display: flex; flex-direction: column; height: 100vh;">
           <nav class="navbar navbar-expand-lg navbar-light bg-light">
-            <button id="check_btn" type="button" class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#exampleModal"><i class="fas fa-check fa-lg d-inline-block align-middle mr-2"></i>Checkpoint</button>
+            <button id="check_btn" type="button" class="btn btn-primary btn-lg mod" data-bs-toggle="modal" data-bs-target="#exampleModal"><i class="fas fa-check fa-lg d-inline-block align-middle mr-2"></i>Checkpoint</button>
             <span class="status" id="status-text"></span>
             <div id="spinner"></div>
             <div class="collapse navbar-collapse" id="navbarNav">
@@ -34,8 +35,10 @@
               </ul>
             </div>
           </nav>  
-                                        
-          <iframe id="argilla" src="{{choose}}" style="flex: 1;width: 100%; height: 100%; border: none;"></iframe>
+          <div id="argilla_div" style="display: flex;height: 100vh;">  
+            <div id="spinner_frame" class="spinner-centro" style="display: none"></div>                    
+            <iframe id="argilla" src="{{choose}}" style="flex: 1;width: 100%; height: 100%; border: none;"></iframe>
+          <div>
         </div>
         <!-- Modal -->
         <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
@@ -110,12 +113,14 @@
       method: 'GET',
       success: function(data){
         $('#trusting').text((data[data.length-1].trusting*100).toFixed(2)+"%")
-        var inv_hamming_loss = 0
+        var inv_jensen_shannon = 0
+        const jensen_shannon = [];
         data.forEach(function(elemento) {
-          inv_hamming_loss += (1-elemento.hamming_loss)
+          inv_jensen_shannon += (1-elemento.jensenshannon)
+          jensen_shannon.push(1-elemento.jensenshannon);
         });
-
-        $('#concordancia_percent').text((inv_hamming_loss/data.length*100).toFixed(2)+"%")
+        const media_movel = weightedMovingAverage(jensen_shannon,4)
+        $('#concordancia_percent').text((media_movel[media_movel.length-1]*100).toFixed(2)+"%")
 
         $.ajax({
           url: "/gen-graph",
@@ -125,8 +130,11 @@
           contentType: "application/json",
           dataType: "json",
           success: function(data) {
-            const $graph = $(data.graph_inv_hamming_loss);
-            $('#graficos_render').append($graph);
+            $('#graficos_render').empty()
+            //const $graph_inv = $(data.graph_inv_hamming_loss);
+            const $graph_metrics = $(data.graph_metrics);
+            //$('#graficos_render').append($graph_inv);
+            $('#graficos_render').append($graph_metrics);
           },
           complete: function() {
             const $div3 = $('<div>',{
@@ -141,7 +149,7 @@
               $div3
             )
             const $div = $('<div>',{'class':"row-md-7",'style':"width: fit-content !important;"})
-            $('#graficos_render').children().wrap($div3).prepend('<h6 class="card-title font-weight-bold">Tendência de Acordo</h6>').wrap($div2).wrap($div);
+            $('#graficos_render').children().wrap($div3).wrap($div2).wrap($div);
           }
         })
       }
@@ -165,14 +173,18 @@
     checkpoint("{{dt_complete.id}}",false)
   });
   function checkpoint(id,isAuto) {
-    var actual_batch_id = -1
+    $("#spinner_frame").css("display","block");
+    $("#argilla").css("display","none");
+    var old_batch = -1;
     $.ajax({
-      url: "http://procyon.tce.pi.gov.br:5001/datasets/"+id+"/status",
+      url: "http://procyon.tce.pi.gov.br:5001/datasets?id="+id,
       method: 'GET',
       success: function(data) {
-          actual_batch_id = data[data.length-1].batch_id
-          var dados = {
-            "batch_id" : actual_batch_id,
+        console.log(data)
+          const {actual_batch} = data
+          old_batch = actual_batch
+          const dados = {
+            "batch_id" : actual_batch,
             "auto_labeling" : isAuto
           }
           $.ajax({
@@ -182,19 +194,32 @@
               contentType: "application/json",
               dataType: "json",
           })
-          $.ajax({
-            url: "http://procyon.tce.pi.gov.br:5001/datasets/"+id_dataset+"/status",
-            method: 'POST',
-            data: JSON.stringify({
-              "name" : "iniciado",
-              "batch_id" : actual_batch_id+1
-            }),
-            contentType: "application/json",
-            dataType: "json",
-          })
-          refreshBatch(actual_batch_id+1)
       }
     })
+    function _refreshBatch(){
+      $.ajax({
+        url: "http://procyon.tce.pi.gov.br:5001/datasets?id="+id,
+        method: 'GET',
+        success: function(data){
+          const {actual_batch} = data
+          console.log(actual_batch,old_batch)
+          if (old_batch === actual_batch){
+            setTimeout(_refreshBatch, 1000); 
+          }
+          else{
+            $.ajax({
+              url: "http://procyon.tce.pi.gov.br:5001/datasets/"+id+"/status",
+              method: 'POST',
+              data: JSON.stringify({'name':'iniciado','batch_id':actual_batch}),
+              contentType: "application/json",
+              dataType: "json",
+            })
+            refreshBatch(actual_batch)
+          }
+        }
+      })
+    }
+    _refreshBatch()
   }
   function refreshBatch(id) {
     query['metadata']['batch_id'] = [id.toString()]
@@ -202,6 +227,8 @@
     var newURL = "{{choose}}?query="+btoa(JSON.stringify(query))
     console.log(btoa(JSON.stringify(query)))
     console.log(newURL)
+    $("#spinner_frame").css("display","none");
+    $("#argilla").css("display","flex");
     $('#argilla').prop("src",newURL)
   }
   const id_dataset = "{{dt_complete.id}}";
@@ -212,12 +239,19 @@
       method: 'GET',
       success: function(data) {
         if (data[data.length-1].name === 'active_learning') {
-          //$('#check_btn').prop("disabled", true);
+          $('#check_btn').prop("disabled", false);
+          $('#auto_l').prop("disabled",true);
+          $('#refinar').prop("disabled",true);
           $('#status-text').text('Em Active learning');
           $('#spinner').addClass('spinner');
           $('#status-text').addClass('active-learning');
+          $('#status-text').removeClass('checkpoint');
+          $('#argilla').prop("disabled", true);
+          //$('#argilla').addClass('disabled');
         } else if (data[data.length-1].name === 'checkpoint') {
-          //$('#check_btn').prop("disabled", false);
+          $('#check_btn').prop("disabled", false);
+          $('#auto_l').prop("disabled",false);
+          $('#refinar').prop("disabled",false);
           $('#status-text').text('Pronto para Checkpoint');
 
           $('#spinner').removeClass('spinner');
@@ -225,13 +259,18 @@
 
           $('#status-text').addClass('checkpoint');
           $('#status-text').prepend('<i class="fas fa-check"></i> ');
+          $('#argilla').prop("disabled", false);
+          //$('#argilla').removeClass('disabled');
         } else {
           //$('#check_btn').prop("disabled", true);
+          $('#auto_l').prop("disabled",true);
+          $('#refinar').prop("disabled",true);
           $('#status-text').text('Dados preparados');
           $('#spinner').removeClass('spinner');
           $('#status-text').removeClass('active-learning');
           $('#status-text').removeClass('ready-for-checkpoint');
           $('#status-text i').remove();
+          //$('#argilla').removeClass('disabled');
         }
       },
       error: function() {
